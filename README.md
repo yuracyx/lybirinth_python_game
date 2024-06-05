@@ -1,4 +1,4 @@
-# lybirinyh python game
+# lybirinth python game
 
 ## Gameplay 
 ![gameplay](https://github.com/yuracyx/lybirinyh_python_game/blob/main/image.png)
