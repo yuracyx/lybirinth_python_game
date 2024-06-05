@@ -1,0 +1,177 @@
+import pygame
+from pygame.locals import *
+from pygame.sprite import Sprite
+pygame.init()
+import time
+
+# главное
+resolution = (700, 500)
+running_game = True
+finish = False
+count_bullet = 10
+
+# цвета
+BLUE = (44, 212, 242)
+BLACK = (0, 0, 0)
+
+class GameSprite(Sprite):
+    def __init__(self, picture, x, y, weight, height):
+        super().__init__()
+        self.image = pygame.transform.scale(pygame.image.load(picture), (weight, height))
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+    def reset(self):
+        mw.blit(self.image, (self.rect.x, self.rect.y))
+
+class Player(GameSprite):
+    def __init__(self, speed_x, speed_y, picture, x, y, weight, height):
+        super().__init__(picture, x, y, weight, height)
+        self.speed_x = speed_x
+        self.speed_y = speed_y
+    def update(self):
+        # по горизонтали
+        self.rect.x += self.speed_x
+        platforms_touched = pygame.sprite.spritecollide(self, barriers, False)
+        if self.speed_x > 0:
+            for platform in platforms_touched:
+                self.rect.right = min(self.rect.right, platform.rect.left)
+        elif self.speed_x < 0:
+            for platform in platforms_touched:
+                self.rect.left = max(self.rect.left, platform.rect.right)
+
+        # по вертикали
+        self.rect.y += self.speed_y
+        platforms_touched = pygame.sprite.spritecollide(self, barriers, False)
+        if self.speed_y > 0:
+            for platform in platforms_touched:
+                self.rect.bottom = min(self.rect.bottom, platform.rect.top)
+        elif self.speed_y < 0:
+            for platform in platforms_touched:
+                self.rect.top = max(self.rect.top, platform.rect.bottom)
+
+        # боковые края
+        if self.rect.left < 0:
+            self.rect.left = 0
+        elif self.rect.right > 700:
+            self.rect.right = 700
+        # вертикальные края
+        if self.rect.top < 0:
+            self.rect.top = 0
+        elif self.rect.bottom > 500:
+            self.rect.bottom = 500
+
+
+    def fire(self):
+        bullet = Bullet(15, 'bullet.png', self.rect.right, self.rect.centery, 20, 15)
+        bullets.add(bullet)
+
+class Enemy(GameSprite):
+    def __init__(self, direction, speed, picture, x, y, weight, height):
+        super().__init__(picture, x, y, weight, height)
+        self.speed = speed
+        self.direction = direction
+    def update(self):
+        if self.rect.x <= 515:
+            self.direction = 'right'
+        elif self.rect.x >= 635:
+            self.direction = 'left'
+        if self.direction == 'right':
+            self.rect.x += self.speed
+        else:
+            self.rect.x -= self.speed
+
+class Bullet(GameSprite):
+    def __init__(self, speed, picture, x, y, weight, height):
+        super().__init__(picture, x, y, weight, height)
+        self.speed = speed
+
+    def update(self):
+        self.rect.x += self.speed
+        if self.rect.x >= 700:
+            self.kill()
+        bullets_barriers = pygame.sprite.groupcollide(bullets, barriers, True, False)
+        for bullet in bullets_barriers:
+            self.kill()
+        bullets_monster = pygame.sprite.groupcollide(bullets, monsters, True, True)
+        for bullet in bullets_monster:
+            self.kill()
+
+mw = pygame.display.set_mode(resolution)
+pygame.display.set_caption('Game')
+
+
+player_1 = Player(0, 0, 'alien.png', 70, 400, 70, 70)
+monster = Enemy('left', 2,'alien_enemy.png', 590, 200, 60, 60)
+final = GameSprite('diamond.png', 600, 400, 80, 80)
+
+font = pygame.font.SysFont('Times New Roman', 100)
+win_text = font.render('YOU WIN', True, BLACK)
+win = pygame.transform.scale(pygame.image.load('end.jpg'), (700, 500))
+
+wall_vertical = GameSprite('stone_wall.png', 370, 150, 30,400)
+wall_horizont = GameSprite('stone_wall.png', 100, 300, 300,30)
+
+bullets = pygame.sprite.Group()
+barriers = pygame.sprite.Group()
+monsters = pygame.sprite.Group()
+monsters.add(monster)
+
+
+barriers.add(wall_horizont)
+barriers.add(wall_vertical)
+
+while running_game == True:
+
+    for event in pygame.event.get():
+        if event.type == QUIT:
+            running_game = False
+
+        elif event.type == KEYDOWN:
+            if event.key == K_UP:
+                player_1.speed_y = 0
+            elif event.key == K_DOWN:
+                player_1.speed_y = 0
+            elif event.key == K_LEFT:
+                player_1.speed_x = 0
+            elif event.key == K_RIGHT:
+                 player_1.speed_x = 0
+
+        elif event.type == KEYUP:
+            if event.key == K_UP:
+                player_1.speed_y = -10
+            elif event.key == K_DOWN:
+                player_1.speed_y = 10
+            elif event.key == K_LEFT:
+                player_1.speed_x = -10
+            elif event.key == K_RIGHT:
+                player_1.speed_x = 10
+            elif event.key == K_SPACE:
+                if count_bullet == 0:
+                    continue
+                else:
+                    player_1.fire()
+                    count_bullet -= 1
+
+
+
+    if finish == False:
+        mw.fill(BLUE)
+        barriers.draw(mw)
+
+        player_1.reset()
+        monster.update()
+        final.reset()
+        bullets.update()
+
+        bullets.draw(mw)
+        player_1.update()
+        monsters.draw(mw)
+
+        if pygame.sprite.collide_rect(player_1, final) == True:
+            finish = True
+            mw.blit(win, (0, 0))
+            mw.blit(win_text, (135, 200))
+        
+    pygame.time.delay(50)
+    pygame.display.update()
